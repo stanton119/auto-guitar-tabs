@@ -2,41 +2,56 @@ import SwiftUI
 
 struct ContentView: View {
     @StateObject private var detectionManager = DetectionManager()
-    @State private var tabSearchEngine = TabSearchEngine()
-    @State private var currentTab: TabContent?
-    @State private var isLoading = false
+    @State private var currentURL: URL?
     @State private var tabType = "Guitar Tab"
     @State private var autoRefresh = true
     
-    // Auto-scroll state
-    @State private var isAutoScrolling = false
-    @State private var scrollSpeed: Double = 1.0 // Pixels per interval
-    @State private var scrollOffset: CGFloat = 0
-    private let scrollTimer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
+    // Triggers for WebView actions
+    @State private var reloadTrigger = 0
+    @State private var goBackTrigger = 0
 
     let tabTypes = ["Guitar Tab", "Chords", "Bass Tab"]
 
     var body: some View {
         VStack(spacing: 0) {
             // Top Bar
-            HStack(spacing: 20) {
-                VStack(alignment: .leading) {
+            HStack(spacing: 15) {
+                // Navigation Controls
+                HStack(spacing: 10) {
+                    Button(action: { goBackTrigger += 1 }) {
+                        Image(systemName: "chevron.left")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Go Back")
+                    
+                    Button(action: { reloadTrigger += 1 }) {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.title3)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Reload")
+                }
+                .padding(.trailing, 10)
+                
+                VStack(alignment: .leading, spacing: 2) {
                     if let track = detectionManager.currentTrack {
                         Text(track.title)
                             .font(.headline)
+                            .lineLimit(1)
                         Text(track.artist)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
+                            .lineLimit(1)
                     } else {
                         Text("No Track Detected")
                             .font(.headline)
-                        Text("Play something on Spotify or YouTube")
+                        Text("Play music to sync tabs")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
                 }
-                
-                Spacer()
+                .frame(maxWidth: .infinity, alignment: .leading)
                 
                 Picker("Tab Type", selection: $tabType) {
                     ForEach(tabTypes, id: \.self) { type in
@@ -46,73 +61,43 @@ struct ContentView: View {
                 .pickerStyle(.segmented)
                 .frame(width: 250)
                 
-                HStack {
-                    Toggle("Auto Refresh", isOn: $autoRefresh)
+                Picker("Priority", selection: $detectionManager.priority) {
+                    Text("Spotify First").tag(SourcePriority.spotify)
+                    Text("YouTube First").tag(SourcePriority.youtube)
+                }
+                .pickerStyle(.menu)
+                .frame(width: 120)
+                
+                HStack(spacing: 5) {
+                    Toggle("Auto", isOn: $autoRefresh)
                         .labelsHidden()
+                        .toggleStyle(.switch)
                     Text("Auto")
                         .font(.caption)
                 }
-                
-                Divider().frame(height: 24)
-                
-                HStack {
-                    Button(action: { isAutoScrolling.toggle() }) {
-                        Image(systemName: isAutoScrolling ? "pause.fill" : "play.fill")
-                    }
-                    .buttonStyle(.plain)
-                    
-                    Slider(value: $scrollSpeed, in: 0.1...5.0)
-                        .frame(width: 100)
-                    
-                    Text("Scroll")
-                        .font(.caption)
-                }
             }
-            .padding()
+            .padding(.horizontal)
+            .padding(.vertical, 10)
             .background(Color(NSColor.windowBackgroundColor))
             
             Divider()
             
-            // Main Tab View
+            // Main View (WebView)
             ZStack {
-                if isLoading {
-                    ProgressView("Fetching Tab...")
-                } else if let tab = currentTab {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            Text(tab.content)
-                                .font(.system(.body, design: .monospaced))
-                                .padding()
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .id("tabContent")
-                                .background(
-                                    GeometryReader { geo in
-                                        Color.clear.preference(key: ScrollOffsetPreferenceKey.self, value: geo.frame(in: .named("scroll")).origin.y)
-                                    }
-                                )
-                        }
-                        .coordinateSpace(name: "scroll")
-                        .onPreferenceChange(ScrollOffsetPreferenceKey.self) { value in
-                            if !isAutoScrolling {
-                                scrollOffset = -value
-                            }
-                        }
-                        .onReceive(scrollTimer) { _ in
-                            if isAutoScrolling {
-                                scrollOffset += CGFloat(scrollSpeed)
-                                // Note: Simple auto-scroll doesn't easily work with ScrollViewReader without hacks
-                                // For a prototype, we'll use an easier approach if possible or just document it.
-                                // In SwiftUI, real programatic scrolling is often done via proxy.scrollTo
-                            }
-                        }
-                    }
+                if let url = currentURL {
+                    WebView(url: url, reloadTrigger: $reloadTrigger, goBackTrigger: $goBackTrigger)
+                        .id("webview") // Keep identity stable
                 } else {
-                    VStack {
+                    VStack(spacing: 15) {
                         Image(systemName: "music.note.list")
-                            .font(.system(size: 50))
+                            .font(.system(size: 60))
                             .foregroundColor(.secondary)
-                        Text("No Tab Loaded")
+                        Text("Ready to learn a new song?")
+                            .font(.title3)
                             .foregroundColor(.secondary)
+                        Text("Start playing on Spotify or YouTube")
+                            .font(.subheadline)
+                            .foregroundColor(Color(NSColor.tertiaryLabelColor))
                     }
                 }
             }
@@ -120,62 +105,31 @@ struct ContentView: View {
         }
         .frame(minWidth: 900, minHeight: 600)
         .onChange(of: detectionManager.currentTrack) { _, newTrack in
-            if autoRefresh, let track = newTrack {
-                fetchTab(for: track)
+            if autoRefresh, let _ = newTrack {
+                refreshTab()
             }
         }
         .onChange(of: tabType) { _, _ in
-            if let track = detectionManager.currentTrack {
-                fetchTab(for: track)
-            }
+            refreshTab()
         }
     }
 
-    private func fetchTab(for track: TrackInfo) {
-        Task {
-            isLoading = true
-            isAutoScrolling = false
-            scrollOffset = 0
-            do {
-                let results = try await tabSearchEngine.search(artist: track.artist, title: track.title)
-                // Filter by type
-                let searchType = tabType.lowercased().replacingOccurrences(of: " tab", with: "")
-                let filtered = results.filter { $0.type.lowercased().contains(searchType) }
-                
-                if let firstMatch = filtered.first ?? results.first {
-                    let content = try await tabSearchEngine.fetchTabContent(url: firstMatch.url)
-                    await MainActor.run {
-                        self.currentTab = TabContent(
-                            id: firstMatch.id,
-                            name: firstMatch.name,
-                            artist: firstMatch.artist,
-                            type: firstMatch.type,
-                            rating: firstMatch.rating,
-                            votes: firstMatch.votes,
-                            content: content,
-                            url: firstMatch.url
-                        )
-                        self.isLoading = false
-                    }
-                } else {
-                    await MainActor.run {
-                        self.isLoading = false
-                        self.currentTab = nil
-                    }
-                }
-            } catch {
-                print("Error fetching tab: \(error)")
-                await MainActor.run {
-                    self.isLoading = false
-                }
+    private func refreshTab() {
+        guard let track = detectionManager.currentTrack else { return }
+        
+        let typeMap = ["Guitar Tab": 200, "Chords": 300, "Bass Tab": 400]
+        let typeVal = typeMap[tabType] ?? 200
+        
+        var components = URLComponents(string: "https://www.ultimate-guitar.com/search.php")!
+        components.queryItems = [
+            URLQueryItem(name: "value", value: "\(track.artist) \(track.title)"),
+            URLQueryItem(name: "type[]", value: String(typeVal))
+        ]
+        
+        if let url = components.url {
+            if self.currentURL != url {
+                self.currentURL = url
             }
         }
-    }
-}
-
-struct ScrollOffsetPreferenceKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
     }
 }

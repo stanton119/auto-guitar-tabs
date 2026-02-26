@@ -7,8 +7,14 @@ struct TrackInfo: Equatable {
     let source: String // "Spotify" or "YouTube"
 }
 
+enum SourcePriority: String {
+    case spotify = "Spotify"
+    case youtube = "YouTube"
+}
+
 class DetectionManager: ObservableObject {
     @Published var currentTrack: TrackInfo?
+    @Published var priority: SourcePriority = .spotify
     private var timer: AnyCancellable?
 
     init() {
@@ -24,23 +30,20 @@ class DetectionManager: ObservableObject {
     }
 
     func poll() {
-        if let spotifyTrack = pollSpotify() {
-            if spotifyTrack != currentTrack {
-                currentTrack = spotifyTrack
-            }
-            return
+        let spotifyTrack = pollSpotify()
+        let youtubeTrack = pollSafariYouTube()
+        
+        var selectedTrack: TrackInfo?
+        
+        if priority == .spotify {
+            selectedTrack = spotifyTrack ?? youtubeTrack
+        } else {
+            selectedTrack = youtubeTrack ?? spotifyTrack
         }
 
-        if let youtubeTrack = pollSafariYouTube() {
-            if youtubeTrack != currentTrack {
-                currentTrack = youtubeTrack
-            }
-            return
+        if selectedTrack != currentTrack {
+            currentTrack = selectedTrack
         }
-
-        // If nothing is playing, we keep the last track or set to nil?
-        // For now, let's just keep it or set to nil if both are definitely not playing.
-        // But Spotify might be "paused", which AppleScript can detect.
     }
 
     private func pollSpotify() -> TrackInfo? {
@@ -50,7 +53,8 @@ class DetectionManager: ObservableObject {
                 if player state is playing then
                     set trackName to name of current track
                     set trackArtist to artist of current track
-                    return trackName & "|" & trackArtist
+                    set trackURL to spotify url of current track
+                    return trackName & "|" & trackArtist & "|" & trackURL
                 end if
             end tell
         end if
@@ -62,8 +66,17 @@ class DetectionManager: ObservableObject {
             let result = script.executeAndReturnError(&error)
             if let stringResult = result.stringValue, !stringResult.isEmpty {
                 let parts = stringResult.components(separatedBy: "|")
-                if parts.count == 2 {
-                    return TrackInfo(title: parts[0], artist: parts[1], source: "Spotify")
+                if parts.count >= 3 {
+                    let title = parts[0]
+                    let artist = parts[1]
+                    let url = parts[2]
+                    
+                    // Skip updates if it's an advertisement
+                    if url.contains("spotify:ad") || artist == "Spotify" {
+                        return nil
+                    }
+                    
+                    return TrackInfo(title: title, artist: artist, source: "Spotify")
                 }
             }
         }
