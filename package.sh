@@ -32,7 +32,9 @@ cat <<EOF > "${APP_BUNDLE}/Contents/Info.plist"
     <string>1.0</string>
     <key>LSMinimumSystemVersion</key>
     <string>14.0</string>
-    <key>NSHighResolutionCapable</key>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>This app needs to control Spotify and Safari to detect the currently playing song.</string>
+    <key>com.apple.security.automation.apple-events</key>
     <true/>
 </dict>
 </plist>

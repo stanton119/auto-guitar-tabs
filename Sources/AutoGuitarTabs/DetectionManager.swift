@@ -33,6 +33,15 @@ class DetectionManager: ObservableObject {
         let spotifyTrack = pollSpotify()
         let youtubeTrack = pollSafariYouTube()
         
+        // Debug logging for debugging standalone bundle
+        if spotifyTrack == nil && youtubeTrack == nil {
+            // print("DetectionManager: No tracks detected.")
+        } else if let track = spotifyTrack {
+            // print("DetectionManager: Spotify detected: \(track.title)")
+        } else if let track = youtubeTrack {
+            // print("DetectionManager: YouTube detected: \(track.title)")
+        }
+        
         var selectedTrack: TrackInfo?
         
         if priority == .spotify {
