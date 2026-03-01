@@ -5,16 +5,45 @@ struct WebView: NSViewRepresentable {
     let url: URL
     @Binding var reloadTrigger: Int
     @Binding var goBackTrigger: Int
+    @Binding var zoomLevel: Int
+    @Binding var autoScrollEnabled: Bool
+    @Binding var scrollSpeed: Double
     
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.customUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
         webView.navigationDelegate = context.coordinator
+        
+        // Initial zoom
+        webView.magnification = CGFloat(zoomLevel) / 100.0
+        
         return webView
     }
     
     func updateNSView(_ nsView: WKWebView, context: Context) {
+        // Apply zoom level if it changed
+        let targetMagnification = CGFloat(zoomLevel) / 100.0
+        if nsView.magnification != targetMagnification {
+            nsView.setMagnification(targetMagnification, centeredAt: .zero)
+        }
+        
+        // Handle Auto-Scroll
+        if autoScrollEnabled {
+            let js = """
+            window.currentScrollSpeed = \(scrollSpeed);
+            if (!window.autoScrollInterval) {
+                window.autoScrollInterval = setInterval(() => {
+                    window.scrollBy(0, window.currentScrollSpeed);
+                }, 50);
+            }
+            """
+            nsView.evaluateJavaScript(js, completionHandler: nil)
+        } else {
+            let js = "if (window.autoScrollInterval) { clearInterval(window.autoScrollInterval); window.autoScrollInterval = null; }"
+            nsView.evaluateJavaScript(js, completionHandler: nil)
+        }
+        
         // If the URL is different from the current one and it's not a back/forward action
         if nsView.url?.absoluteString != url.absoluteString && context.coordinator.lastLoadedURL != url {
             let request = URLRequest(url: url)
