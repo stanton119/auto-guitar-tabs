@@ -37,6 +37,12 @@ A native macOS application that automatically detects the currently playing song
     ./.build/release/AutoGuitarTabs
     ```
 
+4.  **Create a Standalone App Bundle (.app):**
+    ```bash
+    ./package.sh
+    ```
+    This will create an `AutoGuitarTabs.app` in your project root that you can double-click or move to your **Applications** folder.
+
 ## Usage
 
 1.  **Open Spotify or YouTube in Safari** and start playing a song.
