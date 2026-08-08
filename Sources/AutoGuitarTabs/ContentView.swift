@@ -88,17 +88,8 @@ struct ContentView: View {
 
     private func refreshTab() {
         guard let track = detectionManager.currentTrack else { return }
-        
-        let typeMap: [Instrument: Int] = [.guitar: 200, .chords: 300, .bass: 400]
-        let typeVal = typeMap[selectedInstrument] ?? 200
-        
-        var components = URLComponents(string: "https://www.ultimate-guitar.com/search.php")!
-        components.queryItems = [
-            URLQueryItem(name: "value", value: "\(track.artist) \(track.title)"),
-            URLQueryItem(name: "type[]", value: String(typeVal))
-        ]
-        
-        if let url = components.url {
+
+        if let url = selectedInstrument.ultimateGuitarURL(for: track) {
             if self.currentURL != url {
                 self.currentURL = url
             }
@@ -273,13 +264,32 @@ enum Instrument: String, CaseIterable, Identifiable {
     case guitar = "Guitar Tab"
     case chords = "Chords"
     case bass = "Bass Tab"
-    
+
     var id: String { self.rawValue }
+
+    var typeID: Int? {
+        switch self {
+        case .guitar: return 200
+        case .chords: return 300
+        case .bass: return 400
+        }
+    }
+
     var icon: String {
         switch self {
         case .guitar: return "guitars"
         case .chords: return "music.note.list"
         case .bass: return "amplifier"
         }
+    }
+
+    func ultimateGuitarURL(for track: TrackInfo) -> URL? {
+        var components = URLComponents(string: "https://www.ultimate-guitar.com/search.php")!
+        var queryItems = [URLQueryItem(name: "value", value: "\(track.artist) \(track.title)")]
+        if let typeID {
+            queryItems.append(URLQueryItem(name: "type[]", value: String(typeID)))
+        }
+        components.queryItems = queryItems
+        return components.url
     }
 }
