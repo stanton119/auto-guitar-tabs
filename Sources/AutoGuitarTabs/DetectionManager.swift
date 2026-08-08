@@ -41,16 +41,23 @@ class DetectionManager: ObservableObject {
         } else if let track = youtubeTrack {
             // print("DetectionManager: YouTube detected: \(track.title)")
         }
-        
+
+        applySelection(spotifyTrack: spotifyTrack, youtubeTrack: youtubeTrack)
+    }
+
+    func applySelection(spotifyTrack: TrackInfo?, youtubeTrack: TrackInfo?) {
         var selectedTrack: TrackInfo?
-        
+
         if priority == .spotify {
             selectedTrack = spotifyTrack ?? youtubeTrack
         } else {
             selectedTrack = youtubeTrack ?? spotifyTrack
         }
 
-        if selectedTrack != currentTrack {
+        // Only replace the current track with a real detection. When nothing is
+        // detected (e.g. Spotify paused), keep the last known track so the app
+        // doesn't lose track of the song.
+        if let selectedTrack, selectedTrack != currentTrack {
             currentTrack = selectedTrack
         }
     }

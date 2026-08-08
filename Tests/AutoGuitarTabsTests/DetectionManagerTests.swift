@@ -15,4 +15,24 @@ final class DetectionManagerTests: XCTestCase {
         let manager = DetectionManager()
         XCTAssertNil(manager.currentTrack)
     }
+
+    func testPausePreservesLastKnownTrack() {
+        let manager = DetectionManager()
+        let track = TrackInfo(title: "Song A", artist: "Artist B", source: "Spotify")
+        manager.applySelection(spotifyTrack: track, youtubeTrack: nil)
+        XCTAssertEqual(manager.currentTrack, track)
+
+        // Pausing Spotify makes pollSpotify() return nil
+        manager.applySelection(spotifyTrack: nil, youtubeTrack: nil)
+        XCTAssertEqual(manager.currentTrack, track, "Pausing should not wipe the last known track")
+    }
+
+    func testNewTrackStillUpdatesCurrentTrack() {
+        let manager = DetectionManager()
+        let first = TrackInfo(title: "Song A", artist: "Artist B", source: "Spotify")
+        let second = TrackInfo(title: "Song C", artist: "Artist D", source: "Spotify")
+        manager.applySelection(spotifyTrack: first, youtubeTrack: nil)
+        manager.applySelection(spotifyTrack: second, youtubeTrack: nil)
+        XCTAssertEqual(manager.currentTrack, second)
+    }
 }
