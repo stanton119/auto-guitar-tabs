@@ -13,9 +13,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build release binary
-        run: swift build -c release
-
       - name: Assemble app bundle
         run: ./package.sh
 
@@ -44,12 +41,11 @@ jobs:
           EOF
 
       - name: Create release zip
-        run: ditto -c -k --keepParent dist "AutoGuitarTabs-${{ steps.version.outputs.version }}-macOS.zip"
+        run: ditto -c -k dist "AutoGuitarTabs-${{ steps.version.outputs.version }}-macOS.zip"
 
       - name: Attach zip to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: "AutoGuitarTabs-${{ steps.version.outputs.version }}-macOS.zip"
-          name: ${{ github.event.release.tag_name }}
           append_only: true
           fail_on_unmatched_files: true
