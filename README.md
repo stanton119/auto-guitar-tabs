@@ -2,6 +2,8 @@
 
 A native macOS application that automatically detects the currently playing song on **Spotify** or **YouTube (Safari)** and opens the corresponding guitar tab from **Ultimate Guitar**.
 
+![Auto Guitar Tabs screenshot](screenshot.png)
+
 ## Features
 
 - **Automatic Song Sync:** Detects song changes every 3 seconds and refreshes your tab.
