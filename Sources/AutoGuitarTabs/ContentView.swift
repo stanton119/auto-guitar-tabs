@@ -9,6 +9,11 @@ struct ContentView: View {
     // Triggers for WebView actions
     @State private var reloadTrigger = 0
     @State private var goBackTrigger = 0
+    @State private var goForwardTrigger = 0
+
+    // WebView navigation history state (drives toolbar button enablement)
+    @State private var canGoBack = false
+    @State private var canGoForward = false
     
     @State private var zoomLevel = 100
     @State private var autoScrollEnabled = false
@@ -35,7 +40,7 @@ struct ContentView: View {
                 if let url = currentURL {
                     ZStack(alignment: .bottom) {
                         ZStack {
-                            WebView(url: url, reloadTrigger: $reloadTrigger, goBackTrigger: $goBackTrigger, zoomLevel: $zoomLevel, autoScrollEnabled: $autoScrollEnabled, scrollSpeed: $scrollSpeed)
+                            WebView(url: url, reloadTrigger: $reloadTrigger, goBackTrigger: $goBackTrigger, goForwardTrigger: $goForwardTrigger, canGoBack: $canGoBack, canGoForward: $canGoForward, zoomLevel: $zoomLevel, autoScrollEnabled: $autoScrollEnabled, scrollSpeed: $scrollSpeed)
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
@@ -66,8 +71,15 @@ struct ContentView: View {
                     Button(action: { goBackTrigger += 1 }) {
                         Image(systemName: "chevron.left")
                     }
+                    .disabled(!canGoBack)
                     .help("Go Back")
-                    
+
+                    Button(action: { goForwardTrigger += 1 }) {
+                        Image(systemName: "chevron.right")
+                    }
+                    .disabled(!canGoForward)
+                    .help("Go Forward")
+
                     Button(action: { reloadTrigger += 1 }) {
                         Image(systemName: "arrow.clockwise")
                     }
