@@ -11,7 +11,7 @@ struct WebView: NSViewRepresentable {
     @Binding var zoomLevel: Int
     @Binding var autoScrollEnabled: Bool
     @Binding var scrollSpeed: Double
-    let autoOpenFirstTab: Bool = true
+    var autoOpenFirstTab: Bool = true
     
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()

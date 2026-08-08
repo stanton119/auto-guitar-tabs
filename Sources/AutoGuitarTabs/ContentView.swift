@@ -5,6 +5,7 @@ struct ContentView: View {
     @State private var currentURL: URL?
     @State private var selectedInstrument: Instrument = .all
     @State private var autoRefresh = true
+    @State private var autoOpenFirstTab = true
     
     // Triggers for WebView actions
     @State private var reloadTrigger = 0
@@ -31,7 +32,7 @@ struct ContentView: View {
                 
                 Spacer()
                 
-                SidebarFooter(detectionManager: detectionManager, autoRefresh: $autoRefresh)
+                SidebarFooter(detectionManager: detectionManager, autoRefresh: $autoRefresh, autoOpenFirstTab: $autoOpenFirstTab)
             }
             .navigationSplitViewColumnWidth(min: 240, ideal: 260, max: 300)
             .background(.ultraThinMaterial)
@@ -40,7 +41,7 @@ struct ContentView: View {
                 if let url = currentURL {
                     ZStack(alignment: .bottom) {
                         ZStack {
-                            WebView(url: url, reloadTrigger: $reloadTrigger, goBackTrigger: $goBackTrigger, goForwardTrigger: $goForwardTrigger, canGoBack: $canGoBack, canGoForward: $canGoForward, zoomLevel: $zoomLevel, autoScrollEnabled: $autoScrollEnabled, scrollSpeed: $scrollSpeed)
+                            WebView(url: url, reloadTrigger: $reloadTrigger, goBackTrigger: $goBackTrigger, goForwardTrigger: $goForwardTrigger, canGoBack: $canGoBack, canGoForward: $canGoForward, zoomLevel: $zoomLevel, autoScrollEnabled: $autoScrollEnabled, scrollSpeed: $scrollSpeed, autoOpenFirstTab: autoOpenFirstTab)
                         }
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .shadow(color: .black.opacity(0.1), radius: 20, x: 0, y: 10)
@@ -183,6 +184,7 @@ struct InstrumentNavigationList: View {
 struct SidebarFooter: View {
     @ObservedObject var detectionManager: DetectionManager
     @Binding var autoRefresh: Bool
+    @Binding var autoOpenFirstTab: Bool
     
     var body: some View {
         VStack(spacing: 15) {
@@ -204,6 +206,13 @@ struct SidebarFooter: View {
                 
                 Toggle(isOn: $autoRefresh) {
                     Text("Auto-Refresh")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .toggleStyle(.switch)
+                
+                Toggle(isOn: $autoOpenFirstTab) {
+                    Text("Auto-Open First Tab")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
