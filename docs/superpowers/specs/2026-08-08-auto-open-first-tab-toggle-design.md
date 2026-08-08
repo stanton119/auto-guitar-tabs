@@ -34,7 +34,9 @@ URL. When the search page finishes loading, `WebView.Coordinator.didFinish`
 
 ### 3. WebView.swift
 
-- Add `let autoOpenFirstTab: Bool` property.
+- Add `var autoOpenFirstTab: Bool = true` property (a defaulted
+  `var` is a memberwise-init parameter; a defaulted `let` is excluded
+  from the memberwise initializer, which would break the call site).
 - In `updateNSView`, mirror into the Coordinator:
   `context.coordinator.autoOpenFirstTab = autoOpenFirstTab`.
 - Coordinator: add `var autoOpenFirstTab = true`; in `didFinish` (:97),
