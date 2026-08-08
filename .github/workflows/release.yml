@@ -1,0 +1,55 @@
+name: Build and Attach Release Zip
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: macos-14
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release binary
+        run: swift build -c release
+
+      - name: Assemble app bundle
+        run: ./package.sh
+
+      - name: Ad-hoc code-sign bundle
+        run: codesign --force --deep -s - AutoGuitarTabs.app
+
+      - name: Compute version from tag
+        id: version
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          VER="${TAG#v}"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+
+      - name: Stage app and install instructions
+        run: |
+          mkdir -p dist
+          cp -R AutoGuitarTabs.app dist/
+          cat > dist/INSTALL.txt <<'EOF'
+          AutoGuitarTabs — How to Install
+
+          1. Unzip this file.
+          2. Drag the AutoGuitarTabs.app folder into your Applications folder.
+          3. The first time you open it, right-click the app and choose Open.
+             macOS shows a warning because the app is not notarized; click Open.
+          4. Enjoy! Launch AutoGuitarTabs from Launchpad or Applications.
+          EOF
+
+      - name: Create release zip
+        run: ditto -c -k --keepParent dist "AutoGuitarTabs-${{ steps.version.outputs.version }}-macOS.zip"
+
+      - name: Attach zip to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "AutoGuitarTabs-${{ steps.version.outputs.version }}-macOS.zip"
+          name: ${{ github.event.release.tag_name }}
+          append_only: true
+          fail_on_unmatched_files: true
