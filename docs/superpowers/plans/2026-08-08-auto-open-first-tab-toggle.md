@@ -16,6 +16,7 @@
 - Existing `sessionStorage` guard in the JS must remain untouched.
 - Setting defaults to ON (`true`).
 - `autoOpenFirstTab` is a plain `let` value on `WebView` (NOT a `@Binding`), matching the `zoomLevel`/`autoScrollEnabled` property style. The `@State`/`@Binding` plumbing lives only in `ContentView`/`SidebarFooter`.
+- **Ordering resolution (approved):** Task 1 declares `var autoOpenFirstTab: Bool = true` (a defaulted `var` IS a memberwise-init parameter; `let` is excluded) with a default so the existing call site compiles untouched; Task 2 adds the `@State` property and then updates the call site to pass it explicitly.
 
 **Verification note:** `swift build` succeeds in this environment; `swift test` currently fails with a pre-existing environment error (`no such module 'XCTest'`) unrelated to this feature. Do not attempt to fix the test toolchain as part of this plan; verify only with `swift build`.
 
@@ -30,19 +31,20 @@
 
 **Files:**
 - Modify: `Sources/AutoGuitarTabs/WebView.swift` (struct properties ~line 13, `makeNSView` ~line 15-32, `updateNSView` ~line 34-39, Coordinator ~line 84-97)
-- Modify: `Sources/AutoGuitarTabs/ContentView.swift:43` (WebView init call)
 
 **Interfaces:**
 - Consumes: none
-- Produces: `WebView(url:..., reloadTrigger:..., goBackTrigger:..., goForwardTrigger:..., canGoBack:..., canGoForward:..., zoomLevel:..., autoScrollEnabled:..., scrollSpeed:..., autoOpenFirstTab: Bool)` — a new required init parameter; `Coordinator.autoOpenFirstTab: Bool`.
+- Produces: `WebView(url:..., reloadTrigger:..., goBackTrigger:..., goForwardTrigger:..., canGoBack:..., canGoForward:..., zoomLevel:..., autoScrollEnabled:..., scrollSpeed:..., autoOpenFirstTab: Bool = true)` — a new init parameter with a default; `Coordinator.autoOpenFirstTab: Bool`.
 
 - [ ] **Step 1: Add the `autoOpenFirstTab` property**
 
 In `WebView.swift`, add a new stored property after `scrollSpeed` (line 13):
 
 ```swift
-    let autoOpenFirstTab: Bool
+    var autoOpenFirstTab: Bool = true
 ```
+
+The default value keeps the existing call site at `ContentView.swift:43` compiling unchanged — the call site is updated in Task 2 once the `@State` exists.
 
 - [ ] **Step 2: Sync the initial value into the Coordinator**
 
@@ -78,23 +80,15 @@ Then in `webView(_:didFinish:)` at line 97, insert a guard before the `if webVie
 
 The injected JS and the rest of the method remain unchanged.
 
-- [ ] **Step 5: Update the call site**
-
-At `ContentView.swift:43`, add the trailing argument to the `WebView(...)` initializer:
-
-```swift
-                            WebView(url: url, reloadTrigger: $reloadTrigger, goBackTrigger: $goBackTrigger, goForwardTrigger: $goForwardTrigger, canGoBack: $canGoBack, canGoForward: $canGoForward, zoomLevel: $zoomLevel, autoScrollEnabled: $autoScrollEnabled, scrollSpeed: $scrollSpeed, autoOpenFirstTab: autoOpenFirstTab)
-```
-
-- [ ] **Step 6: Build to verify**
+- [ ] **Step 5: Build to verify**
 
 Run: `swift build`
-Expected: Build complete with zero errors. (Do NOT run `swift test` — pre-existing toolchain error `no such module 'XCTest'`.)
+Expected: Build complete with zero errors (the default value keeps the existing call site compiling). Do NOT run `swift test` — pre-existing toolchain error `no such module 'XCTest'`.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add Sources/AutoGuitarTabs/WebView.swift Sources/AutoGuitarTabs/ContentView.swift
+git add Sources/AutoGuitarTabs/WebView.swift
 git commit -m "feat: gate auto-open-first-tab JS injection behind a flag"
 ```
 
@@ -102,10 +96,10 @@ git commit -m "feat: gate auto-open-first-tab JS injection behind a flag"
 ### Task 2: Add the state and sidebar toggle
 
 **Files:**
-- Modify: `Sources/AutoGuitarTabs/ContentView.swift:7`, `:34`, `:183-216`
+- Modify: `Sources/AutoGuitarTabs/ContentView.swift:7` (state), `:43` (WebView call site), `:34` (SidebarFooter), `:183-216` (SidebarFooter struct)
 
 **Interfaces:**
-- Consumes: `WebView(... autoOpenFirstTab:)` init parameter (from Task 1).
+- Consumes: `WebView(... autoOpenFirstTab: Bool = true)` init parameter (from Task 1).
 - Produces: `@State private var autoOpenFirstTab = true` in `ContentView`; `@Binding var autoOpenFirstTab: Bool` on `SidebarFooter`.
 
 - [ ] **Step 1: Add the state property**
@@ -116,7 +110,15 @@ In `ContentView`, after `@State private var autoRefresh = true` (line 7):
     @State private var autoOpenFirstTab = true
 ```
 
-- [ ] **Step 2: Pass it to `SidebarFooter`**
+- [ ] **Step 2: Update the WebView call site**
+
+At `ContentView.swift:43`, add the trailing argument to the `WebView(...)` initializer (relies on the property from Step 1):
+
+```swift
+                            WebView(url: url, reloadTrigger: $reloadTrigger, goBackTrigger: $goBackTrigger, goForwardTrigger: $goForwardTrigger, canGoBack: $canGoBack, canGoForward: $canGoForward, zoomLevel: $zoomLevel, autoScrollEnabled: $autoScrollEnabled, scrollSpeed: $scrollSpeed, autoOpenFirstTab: autoOpenFirstTab)
+```
+
+- [ ] **Step 3: Pass it to `SidebarFooter`**
 
 At `ContentView.swift:34`, update the `SidebarFooter` construction:
 
@@ -124,7 +126,7 @@ At `ContentView.swift:34`, update the `SidebarFooter` construction:
                 SidebarFooter(detectionManager: detectionManager, autoRefresh: $autoRefresh, autoOpenFirstTab: $autoOpenFirstTab)
 ```
 
-- [ ] **Step 3: Add the binding and toggle to `SidebarFooter`**
+- [ ] **Step 4: Add the binding and toggle to `SidebarFooter`**
 
 In `struct SidebarFooter` (line 183), add a new binding after the existing `autoRefresh` binding:
 
@@ -143,12 +145,12 @@ Then, directly under the existing "Auto-Refresh" toggle (line 205-210), inside t
                 .toggleStyle(.switch)
 ```
 
-- [ ] **Step 4: Build to verify**
+- [ ] **Step 5: Build to verify**
 
 Run: `swift build`
 Expected: Build complete with zero errors. (Do NOT run `swift test` — pre-existing toolchain error.)
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 git add Sources/AutoGuitarTabs/ContentView.swift
@@ -160,4 +162,8 @@ git commit -m "feat: add auto-open-first-tab toggle to sidebar"
 
 - **Spec coverage:** Toggle in sidebar footer under Auto-Refresh ✓; state defaults `true` ✓; `WebView.autoOpenFirstTab` plain value + Coordinator mirror ✓; `didFinish` early-return guard ✓; sessionStorage JS untouched ✓; no persistence ✓.
 - **Placeholder scan:** No TBD/TODO; every step has concrete code or an exact edit target.
-- **Type consistency:** `autoOpenFirstTab` is `let ...: Bool` on `WebView`, `Bool` on `Coordinator`, `@State ... = true` in `@in ContentView`, `@Binding var autoOpenFirstTab: Bool` on `SidebarFooter`. Task 1 call-site passes `autoOpenFirstTab` (value); Task 2 passes `$autoOpenFirstTab` (binding) to `SidebarFooter`. Consistent across compilations.
+- **Type consistency:** `autoOpenFirstTab` is `let ...: Bool = true` on `WebView`, `Bool` on `Coordinator`, `@State ... = true` in `ContentView`, `@Binding var autoOpenFirstTab: Bool` on `SidebarFooter`. Task 2 call-site passes `autoOpenFirstTab` (value) to `WebView` and `$autoOpenFirstTab` (binding) to `SidebarFooter`. Consistent across compilations.
+
+## Execution Notes
+
+- **Pre-flight resolution (approved by human):** Task 1 originally updated the WebView call site before the `@State` existed, which would break Task 1's own build. Changed so Task 1 adds `var autoOpenFirstTab: Bool = true` (default keeps existing call site compiling) and the call-site update moved to Task 2.
