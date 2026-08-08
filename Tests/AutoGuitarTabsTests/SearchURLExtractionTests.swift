@@ -28,4 +28,19 @@ final class SearchURLExtractionTests: XCTestCase {
         let items = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
         XCTAssertEqual(items.first { $0.name == "type[]" }?.value, "400")
     }
+
+    func testAllTypeIDIsNil() {
+        XCTAssertNil(Instrument.all.typeID)
+    }
+
+    func testAllIsFirstInstrument() {
+        XCTAssertEqual(Instrument.allCases.first, .all)
+    }
+
+    func testAllURLOmitsTypeFilter() throws {
+        let url = try XCTUnwrap(Instrument.all.ultimateGuitarURL(for: track))
+        let items = try XCTUnwrap(URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems)
+        XCTAssertNil(items.first { $0.name == "type[]" })
+        XCTAssertEqual(items.first { $0.name == "value" }?.value, "Artist B Song A")
+    }
 }

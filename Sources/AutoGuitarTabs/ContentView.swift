@@ -3,7 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @StateObject private var detectionManager = DetectionManager()
     @State private var currentURL: URL?
-    @State private var selectedInstrument: Instrument = .guitar
+    @State private var selectedInstrument: Instrument = .all
     @State private var autoRefresh = true
     
     // Triggers for WebView actions
@@ -261,6 +261,7 @@ struct ControlPill: View {
 }
 
 enum Instrument: String, CaseIterable, Identifiable {
+    case all = "All"
     case guitar = "Guitar Tab"
     case chords = "Chords"
     case bass = "Bass Tab"
@@ -269,6 +270,7 @@ enum Instrument: String, CaseIterable, Identifiable {
 
     var typeID: Int? {
         switch self {
+        case .all: return nil
         case .guitar: return 200
         case .chords: return 300
         case .bass: return 400
@@ -277,6 +279,7 @@ enum Instrument: String, CaseIterable, Identifiable {
 
     var icon: String {
         switch self {
+        case .all: return "music.note"
         case .guitar: return "guitars"
         case .chords: return "music.note.list"
         case .bass: return "amplifier"
