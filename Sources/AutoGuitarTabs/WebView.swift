@@ -21,13 +21,11 @@ struct WebView: NSViewRepresentable {
         // Initial zoom
         webView.magnification = CGFloat(zoomLevel) / 100.0
         
-        context.coordinator.onCanGoBackChange = { canGoBack = $0 }
-        context.coordinator.onCanGoForwardChange = { canGoForward = $0 }
         context.coordinator.canGoBackObservation = webView.observe(\.canGoBack, options: [.initial, .new]) { webView, _ in
-            context.coordinator.onCanGoBackChange?(webView.canGoBack)
+            canGoBack = webView.canGoBack
         }
         context.coordinator.canGoForwardObservation = webView.observe(\.canGoForward, options: [.initial, .new]) { webView, _ in
-            context.coordinator.onCanGoForwardChange?(webView.canGoForward)
+            canGoForward = webView.canGoForward
         }
         
         return webView
@@ -88,8 +86,6 @@ struct WebView: NSViewRepresentable {
         var lastGoBack = 0
         var lastGoForward = 0
         var lastReload = 0
-        var onCanGoBackChange: ((Bool) -> Void)?
-        var onCanGoForwardChange: ((Bool) -> Void)?
         var canGoBackObservation: NSKeyValueObservation?
         var canGoForwardObservation: NSKeyValueObservation?
         
