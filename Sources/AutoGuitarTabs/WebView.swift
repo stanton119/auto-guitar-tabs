@@ -5,6 +5,9 @@ struct WebView: NSViewRepresentable {
     let url: URL
     @Binding var reloadTrigger: Int
     @Binding var goBackTrigger: Int
+    @Binding var goForwardTrigger: Int
+    @Binding var canGoBack: Bool
+    @Binding var canGoForward: Bool
     @Binding var zoomLevel: Int
     @Binding var autoScrollEnabled: Bool
     @Binding var scrollSpeed: Double
@@ -17,6 +20,15 @@ struct WebView: NSViewRepresentable {
         
         // Initial zoom
         webView.magnification = CGFloat(zoomLevel) / 100.0
+        
+        context.coordinator.onCanGoBackChange = { canGoBack = $0 }
+        context.coordinator.onCanGoForwardChange = { canGoForward = $0 }
+        context.coordinator.canGoBackObservation = webView.observe(\.canGoBack, options: [.initial, .new]) { webView, _ in
+            context.coordinator.onCanGoBackChange?(webView.canGoBack)
+        }
+        context.coordinator.canGoForwardObservation = webView.observe(\.canGoForward, options: [.initial, .new]) { webView, _ in
+            context.coordinator.onCanGoForwardChange?(webView.canGoForward)
+        }
         
         return webView
     }
@@ -56,6 +68,11 @@ struct WebView: NSViewRepresentable {
             context.coordinator.lastGoBack = goBackTrigger
         }
         
+        if goForwardTrigger > context.coordinator.lastGoForward {
+            nsView.goForward()
+            context.coordinator.lastGoForward = goForwardTrigger
+        }
+        
         if reloadTrigger > context.coordinator.lastReload {
             nsView.reload()
             context.coordinator.lastReload = reloadTrigger
@@ -69,7 +86,17 @@ struct WebView: NSViewRepresentable {
     class Coordinator: NSObject, WKNavigationDelegate {
         var lastLoadedURL: URL?
         var lastGoBack = 0
+        var lastGoForward = 0
         var lastReload = 0
+        var onCanGoBackChange: ((Bool) -> Void)?
+        var onCanGoForwardChange: ((Bool) -> Void)?
+        var canGoBackObservation: NSKeyValueObservation?
+        var canGoForwardObservation: NSKeyValueObservation?
+        
+        deinit {
+            canGoBackObservation?.invalidate()
+            canGoForwardObservation?.invalidate()
+        }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             if webView.url?.absoluteString.contains("search.php") == true {
