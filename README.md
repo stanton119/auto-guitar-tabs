@@ -19,6 +19,21 @@ A native macOS application that automatically detects the currently playing song
 - **Apps:** Spotify desktop app or Safari (for YouTube support).
 - **Permissions:** On first run, the app will request permission to control Spotify and Safari via AppleScript.
 
+## How to Install (No Coding Required)
+
+If you just want to use AutoGuitarTabs, download the latest release:
+
+- **[Download AutoGuitarTabs](https://github.com/stanton119/auto-guitar-tabs/releases/latest)**
+
+1.  Unzip `AutoGuitarTabs-<version>-macOS.zip`.
+2.  Drag `AutoGuitarTabs.app` into your Applications folder.
+3.  First launch: right-click the app and choose **Open**. (macOS shows one
+    warning because the app is not notarized — click **Open** to continue.)
+4.  Launch AutoGuitarTabs from Launchpad or Applications, and enjoy.
+
+This section is for non-developers. If you want to build or run the app from
+source, continue to [How to Run](#how-to-run).
+
 ## How to Run
 
 1.  **Clone the Repository:**
