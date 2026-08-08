@@ -16,6 +16,7 @@ A native macOS application that automatically detects the currently playing song
 ## Requirements
 
 - **macOS:** Tested on macOS 14.
+- **Architecture:** Downloads from Releases are built for Apple Silicon (M-series) Macs.
 - **Apps:** Spotify desktop app or Safari (for YouTube support).
 - **Permissions:** On first run, the app will request permission to control Spotify and Safari via AppleScript.
 
