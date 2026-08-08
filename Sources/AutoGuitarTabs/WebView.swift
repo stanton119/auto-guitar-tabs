@@ -11,6 +11,7 @@ struct WebView: NSViewRepresentable {
     @Binding var zoomLevel: Int
     @Binding var autoScrollEnabled: Bool
     @Binding var scrollSpeed: Double
+    let autoOpenFirstTab: Bool = true
     
     func makeNSView(context: Context) -> WKWebView {
         let configuration = WKWebViewConfiguration()
@@ -27,11 +28,14 @@ struct WebView: NSViewRepresentable {
         context.coordinator.canGoForwardObservation = webView.observe(\.canGoForward, options: [.initial, .new]) { webView, _ in
             canGoForward = webView.canGoForward
         }
+        context.coordinator.autoOpenFirstTab = autoOpenFirstTab
         
         return webView
     }
     
     func updateNSView(_ nsView: WKWebView, context: Context) {
+        context.coordinator.autoOpenFirstTab = autoOpenFirstTab
+        
         // Apply zoom level if it changed
         let targetMagnification = CGFloat(zoomLevel) / 100.0
         if nsView.magnification != targetMagnification {
@@ -88,6 +92,7 @@ struct WebView: NSViewRepresentable {
         var lastReload = 0
         var canGoBackObservation: NSKeyValueObservation?
         var canGoForwardObservation: NSKeyValueObservation?
+        var autoOpenFirstTab = true
         
         deinit {
             canGoBackObservation?.invalidate()
@@ -95,6 +100,7 @@ struct WebView: NSViewRepresentable {
         }
         
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard autoOpenFirstTab else { return }
             if webView.url?.absoluteString.contains("search.php") == true {
                 let js = """
                 (function() {
